@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#9cddff">
+<title>Vorlesungs-Quiz – Ziegenrennen</title>
+<style>
+  :root {
+    --ink: #263653;
+    --blue: #5578d8;
+    --green: #43a873;
+    --red: #c34f64;
+    --paper: rgba(255,255,255,.95);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 18px 14px 28px;
+    min-height: 100vh;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(#a9e1ff 0%, #e6f6ff 48%, #d8edcf 100%);
+  }
+  button, input { font: inherit; }
+  .app { max-width: 1120px; margin: auto; }
+  header { text-align: center; margin-bottom: 14px; }
+  h1 { margin: 0 0 6px; font-size: clamp(1.75rem, 4vw, 2.7rem); color: #213d69; }
+  header p { margin: 0; color: #496383; }
+  .connection {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
+    padding: 5px 10px; border-radius: 999px; background: #ffffffb8;
+    font-size: .8rem; font-weight: bold;
+  }
+  .connection::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #e0a323; }
+  .connection.online::before { background: #35a66c; }
+  .connection.offline::before { background: #d65767; }
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+    gap: 18px; align-items: stretch;
+  }
+  .card {
+    background: var(--paper); border: 1px solid #fff; border-radius: 24px;
+    padding: 22px; box-shadow: 0 12px 30px #33547c1c;
+  }
+  .join { display: grid; align-content: center; min-height: 410px; text-align: center; }
+  .join h2 { margin: 0 0 8px; color: #385a9b; }
+  .join p { margin: 0 auto 14px; max-width: 40ch; line-height: 1.45; }
+  .join-form { display: grid; gap: 10px; max-width: 390px; width: 100%; margin: 0 auto; }
+  .join-form label { text-align: left; font-weight: bold; }
+  .join-form input {
+    width: 100%; border: 2px solid #c9dcf3; border-radius: 13px;
+    padding: 13px 14px; color: var(--ink); background: #fff;
+  }
+  .join-form input:focus { outline: 3px solid #8ab4f866; border-color: #668ed9; }
+  .customizer {
+    margin: 4px 0 2px; padding: 13px; border: 2px solid #dbe8f6; border-radius: 17px;
+    background: #f7fbff; text-align: left;
+  }
+  .customizer legend { padding: 0 7px; color: #385a9b; font-weight: bold; }
+  .customizer-grid { display: grid; grid-template-columns: 94px 1fr; gap: 12px; align-items: center; }
+  .goat-preview {
+    display: grid; place-items: center; width: 94px; height: 112px; border-radius: 15px;
+    background: linear-gradient(#bceaff 0 62%, #a9db93 62%); box-shadow: inset 0 0 0 1px #fff;
+  }
+  .goat-preview .goat-avatar { width: 86px; height: 72px; }
+  .custom-controls { display: grid; gap: 10px; min-width: 0; }
+  .custom-label { display: block; margin-bottom: 5px; color: #536a87; font-size: .76rem; font-weight: bold; }
+  .option-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .choice {
+    display: grid; place-items: center; min-width: 34px; height: 34px; padding: 3px;
+    border: 2px solid #d4e2f3; border-radius: 10px; background: #fff; cursor: pointer;
+    box-shadow: 0 2px 0 #c4d5e9;
+  }
+  .choice:hover { border-color: #87a7db; }
+  .choice[aria-pressed="true"] { border-color: #5578d8; outline: 3px solid #8ab4f844; transform: translateY(1px); box-shadow: 0 1px 0 #9fb5d4; }
+  .choice .swatch { width: 20px; height: 20px; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 0 1px #8799ad; }
+  .choice .accessory-icon { font-size: 1.25rem; line-height: 1; }
+  .choice .none-icon { color: #7d8da0; font-size: 1rem; font-weight: bold; }
+  .stats { display: flex; justify-content: space-between; gap: 10px; font-weight: bold; font-size: .95rem; }
+  .track { height: 12px; border-radius: 20px; overflow: hidden; background: #dce8f7; margin: 10px 0 22px; }
+  .bar { width: 0; height: 100%; background: linear-gradient(90deg, #45b987, #8bd66c); transition: width .35s; }
+  #question { font-size: 1.3rem; line-height: 1.35; margin: 0 0 18px; }
+  #answers { display: grid; gap: 11px; }
+  .answer {
+    border: 2px solid #d7e5f8; background: #f7faff; color: var(--ink);
+    border-radius: 14px; padding: 13px 14px; text-align: left;
+    cursor: pointer; transition: .2s;
+  }
+  .answer:hover:not(:disabled), .answer:focus-visible { border-color: #7da5e8; background: #eef5ff; }
+  .answer:disabled { cursor: default; opacity: 1; }
+  .answer.correct { border-color: #50b982; background: #e4f8ec; }
+  .answer.wrong { border-color: #e68c9a; background: #fff0f1; }
+  #feedback { min-height: 44px; font-weight: bold; line-height: 1.4; margin: 16px 0 4px; }
+  .btn {
+    display: block; width: 100%; margin-top: 14px; padding: 14px 18px;
+    border: 0; border-radius: 13px; color: white; background: var(--blue);
+    font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 #3e5eaf;
+  }
+  .btn:hover { background: #4267c9; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 3px 0 #3e5eaf; }
+  .btn:disabled { cursor: wait; opacity: .7; }
+  .hidden { display: none !important; }
+
+  .scene {
+    position: relative; min-height: 445px; overflow: hidden; border-radius: 20px;
+    background: linear-gradient(#9cddff 0%, #e2f6ff 57%, #c4e7b4 57%, #83c77f 100%);
+  }
+  .cloud { position: absolute; height: 22px; width: 66px; border-radius: 30px; background: #fff; opacity: .8; top: 40px; left: 15px; }
+  .cloud::before, .cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  .cloud::before { width: 30px; height: 30px; left: 12px; top: -13px; }
+  .cloud::after { width: 24px; height: 24px; left: 34px; top: -7px; }
+  .cloud.two { top: 88px; left: auto; right: 10px; transform: scale(.7); }
+  .distant { position: absolute; inset: 24% 0 0; background: #9db9d9; clip-path: polygon(0 65%, 18% 24%, 28% 48%, 47% 4%, 63% 45%, 78% 17%, 100% 58%, 100% 100%, 0 100%); opacity: .85; }
+  .mountain { position: absolute; inset: 13% -8% -2% 6%; background: linear-gradient(120deg, #7895a7, #456b60 55%, #2e654b); clip-path: polygon(0 100%, 18% 74%, 29% 66%, 43% 43%, 53% 49%, 70% 12%, 83% 34%, 100% 18%, 100% 100%); }
+  .snow { position: absolute; top: 11%; right: 14%; width: 25%; height: 23%; background: #f4fbff; clip-path: polygon(45% 0, 68% 42%, 82% 34%, 100% 73%, 71% 62%, 55% 77%, 37% 48%, 22% 65%, 0 80%); }
+  .flowers { position: absolute; z-index: 3; bottom: 8px; left: 12px; font-size: 20px; letter-spacing: 5px; }
+  .goal { position: absolute; z-index: 4; right: 9%; top: 8%; text-align: center; font-size: 1.8rem; filter: drop-shadow(0 2px 2px #2234); }
+  .goal small { display: block; font-size: .68rem; font-weight: bold; background: #fff2bd; padding: 4px 8px; border-radius: 9px; }
+  #goats { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+  .goat-player {
+    position: absolute; left: 5%; bottom: 5%; min-width: 56px; text-align: center;
+    transform: translate(-50%, 0); transform-origin: 50% 80%;
+    transition: left .65s ease, bottom .65s ease;
+    filter: drop-shadow(0 4px 2px #193a3b44);
+  }
+  .goat-avatar { position: relative; display: block; width: 56px; height: 48px; margin: 0 auto; }
+  .goat-avatar svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .goat-accessory {
+    position: absolute; z-index: 2; top: -16%; right: -7%; font-size: 1.15rem; line-height: 1;
+    filter: drop-shadow(0 1px 1px #20395755); transform: rotate(7deg);
+  }
+  .goat-player.me .goat-avatar { width: 64px; height: 54px; }
+  .goat-player .name {
+    display: inline-block; max-width: 105px; margin-top: 3px; padding: 3px 7px;
+    border: 2px solid #fff; border-radius: 999px; color: #fff; background: #3c6cad;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: .7rem; font-weight: bold; box-shadow: 0 2px 7px #1c334855;
+  }
+  .goat-player.me .name { outline: 3px solid #fff8a8; }
+  .goat-player.tumble { animation: tumble .9s ease; }
+  .goat-player.celebrate .goat-avatar { animation: celebrate .85s ease-in-out infinite alternate; }
+  @keyframes tumble {
+    0% { rotate: 0deg; translate: 0 0; }
+    35% { rotate: 120deg; translate: 0 12px; }
+    70% { rotate: 270deg; translate: 0 -4px; }
+    100% { rotate: 360deg; translate: 0 0; }
+  }
+  @keyframes celebrate { from { transform: rotate(-9deg) translateY(0) scale(1); } to { transform: rotate(9deg) translateY(-10px) scale(1.12); } }
+  .scene-caption { text-align: center; font-weight: bold; margin: 12px 0 4px; color: #3e6647; }
+  .players { margin-top: 14px; border-top: 1px solid #dbe7f2; padding-top: 12px; }
+  .players-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .players h3 { margin: 0; font-size: 1rem; }
+  #player-count { font-size: .8rem; color: #5c718d; }
+  #leaderboard { display: flex; flex-wrap: wrap; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
+  #leaderboard li { border-radius: 999px; padding: 5px 9px; background: #edf4fb; font-size: .78rem; font-weight: bold; }
+  .result { text-align: center; padding: 16px; background: #eff8ff; border-radius: 16px; }
+  .result h2 { margin: 5px 0; color: #385a9b; }
+  .confetti { font-size: 2rem; letter-spacing: 7px; }
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    .scene { min-height: 365px; }
+    .card { padding: 18px; }
+    .join { min-height: 320px; }
+  }
+  @media (max-width: 430px) {
+    .customizer-grid { grid-template-columns: 76px 1fr; gap: 9px; }
+    .goat-preview { width: 76px; height: 108px; }
+    .goat-preview .goat-avatar { width: 72px; height: 62px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>⛰️ Vorlesungs-Quiz</h1>
+    <p>Sechs richtige Antworten am Stück bringen deine Ziege auf den Gipfel.</p>
+    <span class="connection" id="connection" role="status">Verbindung wird geprüft …</span>
+  </header>
+
+  <div class="layout">
+    <section class="card">
+      <div class="join" id="join-view">
+        <div>
+          <div class="confetti">🐐 ⛰️ 🐐</div>
+          <h2>Bereit für das Ziegenrennen?</h2>
+          <p>Gib einen Namen ein. Er erscheint für alle Teilnehmenden neben deiner Ziege.</p>
+          <form class="join-form" id="join-form">
+            <label for="player-name">Dein Anzeigename</label>
+            <input id="player-name" name="player-name" maxlength="24" autocomplete="nickname" required placeholder="z. B. Fynn">
+            <fieldset class="customizer">
+              <legend>Deine Ziege gestalten</legend>
+              <div class="customizer-grid">
+                <div class="goat-preview" id="goat-preview" aria-label="Vorschau deiner Ziege"></div>
+                <div class="custom-controls">
+                  <div>
+                    <span class="custom-label">Fellfarbe</span>
+                    <div class="option-list" id="coat-options" aria-label="Fellfarbe auswählen"></div>
+                  </div>
+                  <div>
+                    <span class="custom-label">Accessoire</span>
+                    <div class="option-list" id="accessory-options" aria-label="Accessoire auswählen"></div>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+            <button class="btn" id="join-button" type="submit">Am Quiz teilnehmen</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="game-view" class="hidden">
+        <div class="stats">
+          <span id="counter">Frage 1 von 8</span>
+          <span id="score">Serie: 0</span>
+        </div>
+        <div class="track" role="progressbar" aria-label="Richtige Antworten in Folge" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0" id="progress-track"><div class="bar" id="progress-bar"></div></div>
+        <div id="quiz">
+          <h2 id="question">Frage wird geladen …</h2>
+          <div id="answers"></div>
+          <p id="feedback" aria-live="polite"></p>
+          <button class="btn hidden" id="next">Nächste Frage →</button>
+        </div>
+        <div id="result" class="result hidden" aria-live="polite">
+          <div class="confetti">🎉 🎊 ✨ 🥳</div>
+          <h2>🏆 Gipfel erreicht!</h2>
+          <p>Du hast alle Fragen in Folge richtig beantwortet. Deine Ziege feiert oben!</p>
+          <button class="btn" id="restart">🔄 Noch einmal spielen</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card">
+      <div class="scene" aria-label="Mehrere Ziegen klettern gemeinsam auf einen Berg">
+        <div class="cloud"></div><div class="cloud two"></div>
+        <div class="distant"></div><div class="mountain"></div><div class="snow"></div>
+        <div class="goal">🚩<small>GIPFEL</small></div>
+        <div id="goats"></div>
+        <div class="flowers">🌼 🌿 🌸</div>
+      </div>
+      <p class="scene-caption" id="goat-message" aria-live="polite">Warte auf die ersten Kletterziegen …</p>
+      <section class="players" aria-label="Teilnehmende">
+        <div class="players-head"><h3>Im Rennen</h3><span id="player-count">0 Personen</span></div>
+        <ol id="leaderboard"></ol>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script>
+  // =====================================================
+  // FRAGEN HIER BEARBEITEN
+  // correct: 0 = erste Antwort, 1 = zweite, 2 = dritte,
+  // 3 = vierte Antwort. Die Anzahl der Fragen ist flexibel.
+  // =====================================================
+  const questions = [
+    {
+      text: "Warum ist Pünktlichkeit im beruflichen Kontext wichtig?",
+      answers: [
+        "Sie zeigt Respekt, erleichtert die Selbstorganisation und vermeidet unnötige Wartezeiten für andere.",
+        "Sie ist nur bei externen Kundenterminen wichtig.",
+        "Sie sorgt automatisch dafür, dass jede Aufgabe fehlerfrei erledigt wird.",
+        "Sie ersetzt eine gute Planung und klare Absprachen."
+      ],
+      correct: 0
+    },
+    {
+      text: "Was versteht man unter Vibe Coding?",
+      answers: [
+        "Das Programmieren ohne Computer.",
+        "Das Entwickeln von Software mithilfe natürlichsprachlicher Anweisungen an eine generative KI.",
+        "Das Erstellen von 3D-Modellen ohne Software.",
+        "Das Testen von Hardware ohne Programmcode."
+      ],
+      correct: 1
+    },
+    {
+      text: "Welche zentrale Aufgabe übernimmt der Mensch beim Vibe Coding?",
+      answers: [
+        "Er muss weiterhin jeden Codebaustein selbst schreiben.",
+        "Er darf den von der KI erzeugten Code nicht verändern.",
+        "Er prüft und testet die Ergebnisse, erkennt Fehler und gibt der KI gezieltes Feedback.",
+        "Er muss das verwendete KI-Modell selbst trainieren."
+      ],
+      correct: 2
+    },
+    {
+      text: "Was bedeutet der umgangssprachliche Ausdruck „Vitamin B“ im beruflichen Kontext?",
+      answers: [
+        "Hilfreiche persönliche Kontakte und Beziehungen.",
+        "Ein verpflichtender Gesundheitsnachweis für Beschäftigte.",
+        "Ein Bonus für besonders gute Leistungen.",
+        "Eine Methode zur Bewertung von Geschäftsprozessen."
+      ],
+      correct: 0
+    },
+    {
+      text: "Warum ist berufliches Netzwerken wichtig?",
+      answers: [
+        "Weil dadurch fachliche Weiterbildung überflüssig wird.",
+        "Weil ein großes Netzwerk automatisch beruflichen Erfolg garantiert.",
+        "Weil Netzwerken nur der Selbstdarstellung in sozialen Medien dient.",
+        "Weil es den Wissensaustausch, neue Kooperationen und berufliche Chancen fördern kann."
+      ],
+      correct: 3
+    },
+    {
+      text: "Wie lässt sich ein berufliches Netzwerk nachhaltig aufbauen und pflegen?",
+      answers: [
+        "Indem man sich nur meldet, wenn man selbst etwas benötigt.",
+        "Durch ehrliches Interesse, regelmäßigen Austausch, Verlässlichkeit und gegenseitige Unterstützung.",
+        "Indem man möglichst viele Kontakte sammelt, ohne mit ihnen zu kommunizieren.",
+        "Durch den ausschließlichen Austausch automatisierter Nachrichten."
+      ],
+      correct: 1
+    }
+  ];
+
+  let current = 0;
+  let streak = 0;
+  let answered = false;
+  let playerName = "";
+  let joined = false;
+  let restarting = false;
+  const playerId = getPlayerId();
+  const knownFalls = new Map();
+  const $ = id => document.getElementById(id);
+
+  const goatOptions = {
+    coats: [
+      { id: "snow", label: "Schneeweiß", body: "#f4f0e6", head: "#ddd5c6", patch: "#b8aa96", dark: "#766b5c" },
+      { id: "caramel", label: "Karamell", body: "#c99661", head: "#a97143", patch: "#82542f", dark: "#59402e" },
+      { id: "chocolate", label: "Schokolade", body: "#74503a", head: "#573828", patch: "#c39970", dark: "#33261f" },
+      { id: "cloud", label: "Wolkengrau", body: "#aeb9c6", head: "#8c99a8", patch: "#68798b", dark: "#485563" },
+      { id: "night", label: "Nachtschwarz", body: "#42474d", head: "#2f3439", patch: "#8b929a", dark: "#1f2428" }
+    ],
+    accessories: [
+      { id: "none", label: "Keins", icon: "×" },
+      { id: "flower", label: "Blume", icon: "🌼" },
+      { id: "bow", label: "Schleife", icon: "🎀" },
+      { id: "cap", label: "Mütze", icon: "🧢" },
+      { id: "glasses", label: "Sonnenbrille", icon: "🕶️" },
+      { id: "crown", label: "Krone", icon: "👑" }
+    ]
+  };
+  let goatCustomization = readStoredGoat();
+
+  function getGoatLook(config = {}) {
+    const coat = goatOptions.coats.find(option => option.id === config.coat) || goatOptions.coats[0];
+    const accessory = goatOptions.accessories.find(option => option.id === config.accessory) || goatOptions.accessories[0];
+    return { coat, accessory };
+  }
+
+  function readStoredGoat() {
+    try {
+      return getGoatLook(JSON.parse(localStorage.getItem("goatQuizCustomization") || "{}"));
+    } catch (error) {
+      return getGoatLook();
+    }
+  }
+
+  function goatData(look = goatCustomization) {
+    return { coat: look.coat.id, accessory: look.accessory.id };
+  }
+
+  function createGoatAvatar(config) {
+    const { coat, accessory } = getGoatLook(config);
+    const avatar = document.createElement("span");
+    avatar.className = "goat-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.innerHTML = `
+      <svg viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M31 65 L29 90 M48 69 L46 92 M72 69 L75 92 M87 63 L92 87" fill="none" stroke="${coat.dark}" stroke-width="5.5" stroke-linecap="round"/>
+        <path d="M25 90 L33 90 M42 92 L50 92 M71 92 L79 92 M88 87 L96 87" fill="none" stroke="#292a28" stroke-width="4" stroke-linecap="round"/>
+        <path d="M26 47 Q12 38 20 24 Q24 34 30 36" fill="none" stroke="${coat.dark}" stroke-width="5.5" stroke-linecap="round"/>
+        <path d="M25 45 Q31 31 55 31 Q76 31 90 43 L88 61 Q76 70 50 69 Q29 69 23 59 Q20 52 25 45Z" fill="${coat.body}" stroke="${coat.dark}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M28 42 Q53 34 82 43" fill="none" stroke="${coat.patch}" stroke-width="4" stroke-linecap="round" opacity=".62"/>
+        <path d="M77 54 Q80 36 92 28 L106 42 L97 61 Q86 62 77 54Z" fill="${coat.head}" stroke="${coat.dark}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M92 30 Q82 14 91 6 Q94 18 99 27 M103 31 Q101 14 111 8 Q110 22 108 31" fill="none" stroke="#d8c29b" stroke-width="5.5" stroke-linecap="round"/>
+        <path d="M95 31 L84 23 Q79 27 91 38 M105 32 L117 24 Q121 32 108 39" fill="${coat.head}" stroke="${coat.dark}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M91 30 Q103 25 111 34 L124 45 Q126 52 118 57 L101 55 Q93 48 91 30Z" fill="${coat.head}" stroke="${coat.dark}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M104 31 L109 52" fill="none" stroke="${coat.patch}" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+        <path d="M113 45 Q124 44 125 50 Q125 56 117 57 L108 53Z" fill="#eadac4" stroke="${coat.dark}" stroke-width="2"/>
+        <ellipse cx="103" cy="38" rx="3.3" ry="2.5" fill="#17202a"/>
+        <path d="M101 38 L105 38" stroke="#f7f4ec" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="121" cy="50" r="1.6" fill="#5b493a"/>
+        <path d="M106 55 L110 74 L116 57" fill="${coat.dark}" stroke="${coat.dark}" stroke-width="2" stroke-linejoin="round"/>
+      </svg>`;
+    if (accessory.id !== "none") {
+      const decoration = document.createElement("span");
+      decoration.className = "goat-accessory";
+      decoration.textContent = accessory.icon;
+      avatar.appendChild(decoration);
+    }
+    avatar.dataset.look = `${coat.id}:${accessory.id}`;
+    return avatar;
+  }
+
+  function renderCustomizer() {
+    const coatList = $("coat-options");
+    const accessoryList = $("accessory-options");
+    coatList.replaceChildren(...goatOptions.coats.map(coat => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "choice";
+      button.title = coat.label;
+      button.setAttribute("aria-label", coat.label);
+      button.setAttribute("aria-pressed", coat.id === goatCustomization.coat.id);
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = coat.body;
+      button.appendChild(swatch);
+      button.addEventListener("click", () => {
+        goatCustomization = { ...goatCustomization, coat };
+        saveAndRenderCustomizer();
+      });
+      return button;
+    }));
+    accessoryList.replaceChildren(...goatOptions.accessories.map(accessory => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "choice";
+      button.title = accessory.label;
+      button.setAttribute("aria-label", accessory.label);
+      button.setAttribute("aria-pressed", accessory.id === goatCustomization.accessory.id);
+      const icon = document.createElement("span");
+      icon.className = accessory.id === "none" ? "none-icon" : "accessory-icon";
+      icon.textContent = accessory.icon;
+      button.appendChild(icon);
+      button.addEventListener("click", () => {
+        goatCustomization = { ...goatCustomization, accessory };
+        saveAndRenderCustomizer();
+      });
+      return button;
+    }));
+    $("goat-preview").replaceChildren(createGoatAvatar(goatData()));
+  }
+
+  function saveAndRenderCustomizer() {
+    localStorage.setItem("goatQuizCustomization", JSON.stringify(goatData()));
+    renderCustomizer();
+  }
+
+  function getPlayerId() {
+    const stored = localStorage.getItem("goatQuizPlayerId");
+    if (stored) return stored;
+    const id = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `player-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem("goatQuizPlayerId", id);
+    return id;
+  }
+
+  function setConnection(state, text) {
+    const badge = $("connection");
+    badge.className = `connection ${state}`;
+    badge.textContent = text;
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+    });
+    if (!response.ok) throw new Error(`Serverfehler ${response.status}`);
+    return response.json();
+  }
+
+  function safeName(value) {
+    return value.replace(/\s+/g, " ").trim().slice(0, 24);
+  }
+
+  $("join-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const name = safeName($("player-name").value);
+    if (!name) return;
+    const button = $("join-button");
+    button.disabled = true;
+    button.textContent = "Verbinde …";
+    try {
+      await api("/api/join", {
+        method: "POST",
+        body: JSON.stringify({ id: playerId, name, maxStep: questions.length, goat: goatData() })
+      });
+      playerName = name;
+      joined = true;
+      localStorage.setItem("goatQuizPlayerName", name);
+      $("join-view").classList.add("hidden");
+      $("game-view").classList.remove("hidden");
+      resetRun();
+      await refreshPlayers();
+    } catch (error) {
+      setConnection("offline", "Keine Verbindung zum Quiz-Server");
+      button.disabled = false;
+      button.textContent = "Erneut versuchen";
+    }
+  });
+
+  async function reportProgress(step, wrong = false) {
+    if (!joined) return;
+    try {
+      const state = await api("/api/progress", {
+        method: "POST",
+        body: JSON.stringify({ id: playerId, name: playerName, step, maxStep: questions.length, wrong, goat: goatData() })
+      });
+      renderPlayers(state.players);
+      setConnection("online", "Mit dem Quiz-Server verbunden");
+    } catch (error) {
+      setConnection("offline", "Verbindung unterbrochen – neuer Versuch läuft");
+    }
+  }
+
+  async function refreshPlayers() {
+    try {
+      const state = await api(`/api/state?playerId=${encodeURIComponent(playerId)}`, { headers: {} });
+      renderPlayers(state.players);
+      setConnection("online", "Mit dem Quiz-Server verbunden");
+    } catch (error) {
+      setConnection("offline", "Verbindung unterbrochen – neuer Versuch läuft");
+    }
+  }
+
+  function hash(text) {
+    let value = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      value ^= text.charCodeAt(i);
+      value = Math.imul(value, 16777619);
+    }
+    return value >>> 0;
+  }
+
+  function playerColor(id) {
+    return `hsl(${hash(id) % 360} 55% 42%)`;
+  }
+
+  function positionFor(player) {
+    const progress = Math.max(0, Math.min(1, player.step / Math.max(1, player.maxStep)));
+    const seed = hash(player.id);
+    const horizontalOffset = ((seed % 7) - 3) * 1.25;
+    const verticalOffset = (((seed >>> 4) % 5) - 2) * 1.0;
+    return {
+      left: Math.max(4, Math.min(79, 7 + progress * 68 + horizontalOffset)),
+      bottom: Math.max(4, Math.min(78, 5 + progress * 68 + verticalOffset))
+    };
+  }
+
+  function renderPlayers(players) {
+    const goats = $("goats");
+    const activeIds = new Set(players.map(player => player.id));
+    [...goats.children].forEach(node => {
+      if (!activeIds.has(node.dataset.id)) node.remove();
+    });
+
+    players.forEach(player => {
+      let node = goats.querySelector(`[data-id="${CSS.escape(player.id)}"]`);
+      const firstAppearance = !node;
+      if (!node) {
+        node = document.createElement("div");
+        node.className = "goat-player";
+        node.dataset.id = player.id;
+        const avatar = createGoatAvatar(player.goat);
+        const label = document.createElement("span");
+        label.className = "name";
+        node.append(avatar, label);
+        goats.appendChild(node);
+      }
+
+      const currentAvatar = node.querySelector(".goat-avatar");
+      const avatarKey = `${getGoatLook(player.goat).coat.id}:${getGoatLook(player.goat).accessory.id}`;
+      if (currentAvatar?.dataset.look !== avatarKey) {
+        const newAvatar = createGoatAvatar(player.goat);
+        newAvatar.dataset.look = avatarKey;
+        currentAvatar?.replaceWith(newAvatar);
+      }
+
+      node.classList.toggle("me", player.id === playerId);
+      node.classList.toggle("celebrate", player.step >= player.maxStep);
+      node.querySelector(".name").textContent = player.id === playerId ? `Du · ${player.name}` : player.name;
+      node.querySelector(".name").style.background = playerColor(player.id);
+      const position = positionFor(player);
+      node.style.left = `${position.left}%`;
+      node.style.bottom = `${position.bottom}%`;
+
+      const previousFall = knownFalls.get(player.id);
+      knownFalls.set(player.id, player.fallVersion);
+      if (!firstAppearance && previousFall !== undefined && player.fallVersion > previousFall) {
+        node.classList.remove("tumble");
+        void node.offsetWidth;
+        node.classList.add("tumble");
+        window.setTimeout(() => node.classList.remove("tumble"), 950);
+      }
+    });
+
+    const ranking = [...players].sort((a, b) => b.step - a.step || a.name.localeCompare(b.name, "de"));
+    $("leaderboard").replaceChildren(...ranking.map(player => {
+      const item = document.createElement("li");
+      const accessory = getGoatLook(player.goat).accessory;
+      item.textContent = `${player.step >= player.maxStep ? "🏆" : accessory.id === "none" ? "🐐" : accessory.icon} ${player.name}: ${player.step}/${player.maxStep}`;
+      if (player.id === playerId) item.style.outline = "2px solid #829edf";
+      return item;
+    }));
+    $("player-count").textContent = `${players.length} ${players.length === 1 ? "Person" : "Personen"}`;
+    $("goat-message").textContent = players.length
+      ? `${players.length} ${players.length === 1 ? "Ziege ist" : "Ziegen sind"} gerade am Berg.`
+      : "Warte auf die ersten Kletterziegen …";
+  }
+
+  function updateProgress() {
+    $("score").textContent = `Serie: ${streak}`;
+    $("counter").textContent = `Frage ${current + 1} von ${questions.length}`;
+    $("progress-bar").style.width = `${streak / questions.length * 100}%`;
+    $("progress-track").setAttribute("aria-valuemax", questions.length);
+    $("progress-track").setAttribute("aria-valuenow", streak);
+  }
+
+  function showQuestion() {
+    answered = false;
+    $("feedback").textContent = "";
+    $("next").classList.add("hidden");
+    $("answers").replaceChildren();
+    const question = questions[current];
+    $("question").textContent = question.text;
+    question.answers.forEach((answer, index) => {
+      const button = document.createElement("button");
+      button.className = "answer";
+      button.textContent = `${String.fromCharCode(65 + index)}.  ${answer}`;
+      button.addEventListener("click", () => checkAnswer(index));
+      $("answers").appendChild(button);
+    });
+    updateProgress();
+  }
+
+  function checkAnswer(index) {
+    if (answered || restarting) return;
+    answered = true;
+    const question = questions[current];
+    const isCorrect = index === question.correct;
+    [...$("answers").children].forEach((button, answerIndex) => {
+      button.disabled = true;
+      if (answerIndex === question.correct) button.classList.add("correct");
+      if (answerIndex === index && !isCorrect) button.classList.add("wrong");
+    });
+
+    if (isCorrect) {
+      streak++;
+      $("feedback").textContent = "Richtig! Deine Ziege klettert höher. 🌟";
+      $("feedback").style.color = "#218653";
+      reportProgress(streak);
+      $("next").textContent = current === questions.length - 1 ? "Gipfel ansehen →" : "Nächste Frage →";
+      $("next").classList.remove("hidden");
+    } else {
+      streak = 0;
+      restarting = true;
+      $("feedback").textContent = `Leider falsch – richtig ist: ${question.answers[question.correct]}. Deine Ziege fällt ins Tal; gleich geht es wieder bei Frage 1 los.`;
+      $("feedback").style.color = "var(--red)";
+      updateProgress();
+      reportProgress(0, true);
+      window.setTimeout(() => {
+        current = 0;
+        restarting = false;
+        showQuestion();
+      }, 2600);
+    }
+    updateProgress();
+  }
+
+  function showResult() {
+    $("quiz").classList.add("hidden");
+    $("result").classList.remove("hidden");
+  }
+
+  function resetRun() {
+    current = 0;
+    streak = 0;
+    answered = false;
+    restarting = false;
+    $("result").classList.add("hidden");
+    $("quiz").classList.remove("hidden");
+    showQuestion();
+    reportProgress(0);
+  }
+
+  $("next").addEventListener("click", () => {
+    if (current < questions.length - 1) {
+      current++;
+      showQuestion();
+    } else {
+      showResult();
+    }
+  });
+  $("restart").addEventListener("click", resetRun);
+
+  const rememberedName = localStorage.getItem("goatQuizPlayerName");
+  if (rememberedName) $("player-name").value = rememberedName;
+  renderCustomizer();
+
+  if (!questions.length || questions.some(question =>
+    !question.text || !Array.isArray(question.answers) || question.answers.length < 2 ||
+    !Number.isInteger(question.correct) || question.correct < 0 || question.correct >= question.answers.length
+  )) {
+    $("join-view").innerHTML = "<p>Bitte prüfe den Fragenbereich: Jede Frage braucht Text, Antworten und einen gültigen correct-Wert.</p>";
+  }
+
+  refreshPlayers();
+  window.setInterval(refreshPlayers, 700);
+</script>
+</body>
+</html>
